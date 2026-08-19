@@ -1,89 +1,109 @@
-# Lecturer Learning Analytics & Student Risk Prediction System
+# Project Tracking & Workload Monitoring System
 
-A full-stack **learning analytics platform** designed to help lecturers analyse assessment performance, identify weak learning chapters, and classify students according to academic risk levels.
+A full-stack **project tracking and workload monitoring platform** designed to help administrators manage users, projects, tasks, assignments, milestones, priorities, and employee workload through a centralized web-based system.
 
-This project is developed as my **Final Year Project (FYP)** at Universiti Teknologi PETRONAS.
-
-> 🚧 **Project Status:** Currently in development
+This project was developed during my **IT Internship at Celestica GBS Penang (M) Sdn. Bhd.**
 
 ---
 
 ## Project Purpose
 
-Lecturers often manage assessment results using spreadsheets, which provide marks but limited analytical insight into student learning performance.
+Project and task monitoring is often handled using spreadsheets or manually maintained tracking files, which can make it difficult to monitor project progress, employee workload, task priorities, and overall status efficiently.
 
-This system transforms uploaded assessment data into actionable analytics by providing:
+This system provides a centralized platform for managing project-related information by supporting:
 
-* Assessment performance summaries
-* Chapter-level learning analytics
-* Strongest and weakest chapter identification
-* Student-level performance analysis
-* Class-level performance trends
-* Machine-learning-based student risk classification
+* Project and task management
+* Employee workload monitoring
+* User and role management
+* Project-to-user assignments
+* Project milestone tracking
+* Status and priority management
+* Gantt-style timeline visualisation
+* Role-based system access
 
-The goal is to support lecturers in identifying learning difficulties earlier and making more informed academic decisions.
+The goal is to improve project visibility, reduce reliance on manual tracking, and provide a clearer overview of employee workload and project progress.
 
 ---
 
 ## Key Features
 
-### Lecturer & Class Management
+### User & Role Management
 
-* Lecturer registration and login
-* Lecturer profile management
-* Create and manage multiple classes
-* Archive completed classes
-* Access previous class analyses
+* Admin and user role support
+* User creation and management
+* User profile information
+* Department and contact information
+* Role-based access control
+* Secure password handling
+* Temporary password support
+* First-login password change support through backend fields
 
-### Assessment Data Upload
+### Authentication & Security
 
-* Structured Excel assessment template
-* Excel structure and data validation
-* Flexible assessment configuration
-* Automatic coursework processing
-* Question-to-chapter mapping
-* Assessment and chapter score calculation
+* Email and password login
+* Password hashing using bcrypt
+* JSON Web Token (JWT) authentication
+* Protected backend routes
+* Role-based permissions
+* Authentication token management
+* Session handling using localStorage or sessionStorage
+* Environment variables for sensitive configuration
 
-### Learning Analytics Dashboard
+### Project Management
 
-* Average assessment performance
-* Chapter-level class performance
-* Strongest and weakest chapters
-* Student-level chapter analysis
-* Risk-level distribution
-* Performance summary visualisations
+* Create and manage projects
+* Update project information
+* Delete projects
+* Assign project priority
+* Assign project status
+* Track project completion
+* Maintain project descriptions and due dates
 
-### Student Risk Prediction
+### Task Management
 
-Students are classified into:
+* Create tasks
+* Assign tasks to users
+* Record task reporter
+* Update task status
+* Update task priority
+* Set task due dates
+* Track task completion
+* Delete tasks
+* Associate tasks with projects
 
-* **Low Risk**
-* **Medium Risk**
-* **High Risk**
+### Project Assignment
 
-Risk prediction uses performance indicators generated from assessment and chapter-level data.
+* Assign users to projects
+* Support multiple project-user relationships
+* View assigned users for each project
+* Maintain project assignments in PostgreSQL
 
----
+### Project Milestones
 
-## Machine Learning
+* Create project milestones
+* Set milestone start dates
+* Set milestone end dates
+* Update milestone status
+* Update milestone priority
+* Delete milestones
+* Associate milestones with projects
 
-Three supervised machine learning algorithms were evaluated:
+### Workload Monitoring
 
-* Logistic Regression
-* Random Forest
-* Decision Tree
+* View employee task assignments
+* Monitor task status
+* Review employee workload
+* Display task priority distribution
+* Display project and task summaries
+* Support dashboard-based monitoring
 
-Evaluation methods include:
+### Gantt & Timeline Tracking
 
-* Accuracy
-* Precision
-* Recall
-* F1-Score
-* 5-Fold Cross-Validation
-
-During model evaluation, **Random Forest achieved approximately 87% test accuracy**, while **Logistic Regression was selected for the current prediction workflow** based on overall model evaluation and cross-validation performance.
-
-The repository also contains a synthetic dataset used for model development and evaluation.
+* Project milestone timeline
+* Start and end date visualisation
+* Task and milestone progress tracking
+* Project timeline monitoring
+* Team-level Gantt-style view
 
 ---
 
@@ -92,259 +112,94 @@ The repository also contains a synthetic dataset used for model development and 
 ### Frontend
 
 * React
+* TypeScript
 * JavaScript
 * HTML
 * CSS
 * Vite
+* Lucide React
 
 ### Backend
 
-* Python
-* Django
-* Django REST Framework
+* Node.js
+* Express.js
+* TypeScript
 * REST API
 
-### Data Analytics & Machine Learning
+### Authentication & Security
 
-* Pandas
-* scikit-learn
-* Microsoft Excel
-* Python-based data processing
+* JSON Web Token (JWT)
+* bcrypt
+* Protected Express routes
+* Role-based authorization
+* Environment variables
 
 ### Database
 
-* SQLite
+* PostgreSQL
+* pgAdmin
 
 ### Development Tools
 
 * Visual Studio Code
 * Git
 * GitHub
-* Figma
+* pgAdmin
+* PowerShell
 
 ---
 
 ## Repository Structure
 
 ```text
-Lecturer-Learning-Analytics/
+Project-Tracking-Workload-Monitoring-System/
 │
 ├── backend/
-│   ├── analytics_api/
-│   ├── config/
-│   ├── manage.py
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── public/
 │   ├── src/
+│   │   ├── config/
+│   │   │   └── database.ts
+│   │   │
+│   │   ├── middleware/
+│   │   │   └── auth.middleware.ts
+│   │   │
+│   │   ├── routes/
+│   │   │   ├── auth.routes.ts
+│   │   │   ├── users.routes.ts
+│   │   │   ├── projects.routes.ts
+│   │   │   ├── tasks.routes.ts
+│   │   │   ├── reference.routes.ts
+│   │   │   ├── project-assignments.routes.ts
+│   │   │   └── project-milestones.routes.ts
+│   │   │
+│   │   └── server.ts
+│   │
 │   ├── package.json
-│   └── vite.config.js
+│   ├── package-lock.json
+│   ├── tsconfig.json
+│   └── .gitignore
 │
-├── analytics_processor.py
-├── excel_validator.py
-├── ml_training.py
-├── risk_predictor.py
-├── model_metadata.json
-│
-├── assessment_template.xlsx
-├── FYP_ML_Synthetic_Dataset_500_v2_Generic.xlsx
+├── src/
+│   ├── components/
+│   │   ├── admin/
+│   │   ├── user/
+│   │   ├── ui/
+│   │   ├── Login.tsx
+│   │   └── Login.css
+│   │
+│   ├── styles/
+│   │   └── globals.css
+│   │
+│   ├── utils/
+│   │   └── excelExport.ts
+│   │
+│   ├── App.tsx
+│   ├── main.tsx
+│   ├── css.d.ts
+│   └── vite-env.d.ts
 │
 ├── .gitignore
+├── index.html
+├── package.json
+├── package-lock.json
+├── vite.config.ts
 └── README.md
-```
-
----
-
-## System Workflow
-
-1. Lecturer creates an account and logs into the system.
-2. Lecturer creates or selects a class.
-3. Assessment data is prepared using the provided Excel template.
-4. Lecturer uploads the completed assessment file.
-5. The backend validates the uploaded Excel structure and data.
-6. Assessment and chapter-level performance metrics are calculated.
-7. Machine learning classifies each student's academic risk level.
-8. Analytics are presented through the lecturer dashboard.
-9. Previous class analyses can be maintained for future reference.
-
----
-
-## Running the Project Locally
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/AinFarisya/Lecturer-Learning-Analytics.git
-cd Lecturer-Learning-Analytics
-```
-
----
-
-### 2. Backend Setup
-
-Navigate to the backend directory:
-
-```bash
-cd backend
-```
-
-Create a Python virtual environment:
-
-```bash
-python -m venv venv
-```
-
-Activate it on Windows:
-
-```bash
-venv\Scripts\activate
-```
-
-Install the required Python packages:
-
-```bash
-pip install -r requirements.txt
-```
-
-Create a `.env` file inside the `backend` directory.
-
-Example:
-
-```env
-DJANGO_SECRET_KEY=your_django_secret_key
-GMAIL_USER=your_email_if_email_features_are_used
-GMAIL_APP_PASSWORD=your_app_password_if_required
-```
-
-Run database migrations:
-
-```bash
-python manage.py migrate
-```
-
-Start the Django backend:
-
-```bash
-python manage.py runserver
-```
-
-The backend will normally run at:
-
-```text
-http://127.0.0.1:8000/
-```
-
----
-
-### 3. Frontend Setup
-
-Open another terminal and navigate to:
-
-```bash
-cd frontend
-```
-
-Install Node.js dependencies:
-
-```bash
-npm install
-```
-
-Start the React development server:
-
-```bash
-npm run dev
-```
-
-The frontend will normally run at:
-
-```text
-http://localhost:5173/
-```
-
----
-
-## Important Security Note
-
-Sensitive and machine-specific files are intentionally excluded from this public repository using `.gitignore`.
-
-These include:
-
-```text
-.env
-db.sqlite3
-venv/
-node_modules/
-__pycache__/
-*.pkl
-```
-
-Environment variables such as the Django secret key and email credentials are **not stored in the public source code**.
-
-Users who clone the repository should create their own local `.env` file before running the backend.
-
----
-
-## Main Project Files
-
-### `excel_validator.py`
-
-Validates the structure and contents of uploaded assessment Excel files before processing.
-
-### `analytics_processor.py`
-
-Processes assessment information and generates student, assessment, and chapter-level analytics.
-
-### `ml_training.py`
-
-Trains and evaluates the machine learning models used for student risk classification.
-
-### `risk_predictor.py`
-
-Uses the selected machine learning workflow to generate student risk predictions.
-
-### `assessment_template.xlsx`
-
-Provides the structured assessment format used for lecturer data uploads.
-
-### `FYP_ML_Synthetic_Dataset_500_v2_Generic.xlsx`
-
-Synthetic dataset used during machine learning model development and evaluation.
-
----
-
-## Current Development Focus
-
-The project is currently being improved in the following areas:
-
-* Frontend and backend integration
-* Real-time dashboard analytics
-* Class-level performance visualisation
-* Student risk analysis
-* User experience refinement
-* System testing and validation
-
----
-
-## Planned Improvements
-
-Future enhancements may include:
-
-* Cloud deployment
-* Enhanced dashboard visualisation
-* Downloadable analytics reports
-* Additional machine learning evaluation
-* More advanced student performance analytics
-* Improved authentication and system security
-
----
-
-## Author
-
-**Nur'Ain Farisya Binti Khairul Nidzar**
-Bachelor of Information Technology (Hons.)
-Universiti Teknologi PETRONAS
-
-**GitHub:** [AinFarisya](https://github.com/AinFarisya)
-**LinkedIn:** [ainfarisya0328](https://linkedin.com/in/ainfarisya0328)
