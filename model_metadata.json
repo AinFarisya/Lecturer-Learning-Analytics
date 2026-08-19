@@ -1,0 +1,17 @@
+{
+  "model_version": "generic_v2",
+  "best_model": "Logistic Regression",
+  "training_records": 400,
+  "testing_records": 100,
+  "features": [
+    "Coursework Performance %",
+    "Assessment Average %",
+    "Lowest Assessment Score %",
+    "Assessment Score Std Dev %",
+    "Average Chapter Score %",
+    "Lowest Chapter Score %",
+    "Weak Chapter Ratio %",
+    "Chapter Score Std Dev %"
+  ],
+  "note": "Generic feature model supports variable assessment counts, variable chapter counts, and variable total coursework weightage. Proof-of-concept model trained on synthetic data with proxy risk labels."
+}
