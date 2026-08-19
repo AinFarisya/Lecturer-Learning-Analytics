@@ -15,7 +15,7 @@ This system allows lecturers to upload assessment data and automatically generat
 * Strongest and weakest learning chapters
 * Student academic risk levels
 * Class-level performance trends
-
+  
 The system also applies machine learning to support early identification of students who may require additional academic attention.
 
 ## Key Features
