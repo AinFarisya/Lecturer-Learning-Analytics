@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiUrl } from '../api'
 
 
 function EditProfileModal({
@@ -95,7 +96,7 @@ function EditProfileModal({
       try {
 
         const response = await fetch(
-          '/api/profile/',
+  apiUrl('/api/profile/'),
           {
             method: 'GET',
             headers: {
@@ -323,7 +324,7 @@ function EditProfileModal({
       }
 
       const response = await fetch(
-        '/api/profile/',
+  apiUrl('/api/profile/'),
         {
           method: 'PUT',
           headers: {

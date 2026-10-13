@@ -1,3 +1,4 @@
+import { apiUrl } from './api'
 import { useEffect, useRef, useState } from 'react'
 
 import ClassCard from './components/ClassCard'
@@ -261,12 +262,11 @@ function App() {
   }, [])
 
 
-  // =====================================================
+    // =====================================================
   // FETCH LECTURER PROFILE
   // =====================================================
 
   const fetchLecturerProfile = async () => {
-
     const token = getToken()
 
     if (!token) {
@@ -274,9 +274,8 @@ function App() {
     }
 
     try {
-
       const response = await fetch(
-        '/api/profile/',
+        apiUrl('/api/profile/'),
         {
           method: 'GET',
           headers: {
@@ -291,33 +290,24 @@ function App() {
         return
       }
 
-      const profile =
-        data.profile || {}
+      const profile = data.profile || {}
 
-      setLecturer(
-        (currentLecturer) => {
-
-          const updatedLecturer = {
-            ...currentLecturer,
-            ...profile,
-          }
-
-          localStorage.setItem(
-            'lecturer',
-            JSON.stringify(
-              updatedLecturer
-            )
-          )
-
-          return updatedLecturer
+      setLecturer((currentLecturer) => {
+        const updatedLecturer = {
+          ...currentLecturer,
+          ...profile,
         }
-      )
 
+        localStorage.setItem(
+          'lecturer',
+          JSON.stringify(updatedLecturer)
+        )
+
+        return updatedLecturer
+      })
     } catch {
-
       // Existing lecturer session can continue
       // even if profile refresh temporarily fails.
-
     }
   }
 
@@ -327,7 +317,6 @@ function App() {
   // =====================================================
 
   const fetchClasses = async () => {
-
     const token = getToken()
 
     if (!token) {
@@ -338,9 +327,8 @@ function App() {
     setClassesError('')
 
     try {
-
       const response = await fetch(
-        '/api/classes/',
+        apiUrl('/api/classes/'),
         {
           method: 'GET',
           headers: {
@@ -361,18 +349,13 @@ function App() {
       setLecturerClasses(
         data.classes || []
       )
-
     } catch (err) {
-
       setClassesError(
         err.message ||
         'Unable to load classes.'
       )
-
     } finally {
-
       setClassesLoading(false)
-
     }
   }
 
@@ -382,7 +365,6 @@ function App() {
   // =====================================================
 
   const fetchHistory = async () => {
-
     const token = getToken()
 
     if (!token) {
@@ -393,9 +375,8 @@ function App() {
     setHistoryError('')
 
     try {
-
       const response = await fetch(
-        '/api/classes/history/',
+        apiUrl('/api/classes/history/'),
         {
           method: 'GET',
           headers: {
@@ -416,18 +397,13 @@ function App() {
       setArchivedClasses(
         data.classes || []
       )
-
     } catch (err) {
-
       setHistoryError(
         err.message ||
         'Unable to load class history.'
       )
-
     } finally {
-
       setHistoryLoading(false)
-
     }
   }
 
@@ -437,12 +413,10 @@ function App() {
   // =====================================================
 
   useEffect(() => {
-
     if (lecturer?.id) {
       fetchClasses()
       fetchLecturerProfile()
     }
-
   }, [lecturer?.id])
 
 
@@ -451,7 +425,6 @@ function App() {
   // =====================================================
 
   const handleLogin = async (event) => {
-
     event.preventDefault()
 
     setLoading(true)
@@ -459,14 +432,12 @@ function App() {
     setSuccess('')
 
     try {
-
       const response = await fetch(
-        '/api/login/',
+        apiUrl('/api/login/'),
         {
           method: 'POST',
           headers: {
-            'Content-Type':
-              'application/json',
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             email,
@@ -475,8 +446,7 @@ function App() {
         }
       )
 
-      const data =
-        await response.json()
+      const data = await response.json()
 
       if (!response.ok) {
         throw new Error(
@@ -492,32 +462,23 @@ function App() {
 
       localStorage.setItem(
         'lecturer',
-        JSON.stringify(
-          data.lecturer
-        )
+        JSON.stringify(data.lecturer)
       )
 
-      setLecturer(
-        data.lecturer
-      )
+      setLecturer(data.lecturer)
 
       setCurrentPage('classes')
 
       setEmail('')
       setPassword('')
       setError('')
-
     } catch (err) {
-
       setError(
         err.message ||
         'Unable to connect to the server.'
       )
-
     } finally {
-
       setLoading(false)
-
     }
   }
 
@@ -527,7 +488,6 @@ function App() {
   // =====================================================
 
   const handleSignup = async (event) => {
-
     event.preventDefault()
 
     setLoading(true)
@@ -538,7 +498,6 @@ function App() {
       signupPassword !==
       confirmPassword
     ) {
-
       setError(
         'Passwords do not match.'
       )
@@ -549,9 +508,8 @@ function App() {
     }
 
     try {
-
       const response = await fetch(
-        '/api/signup/',
+        apiUrl('/api/signup/'),
         {
           method: 'POST',
           headers: {
@@ -572,12 +530,10 @@ function App() {
         await response.json()
 
       if (!response.ok) {
-
         if (
           data.errors &&
           data.errors.length > 0
         ) {
-
           throw new Error(
             data.errors.join(' ')
           )
@@ -612,18 +568,13 @@ function App() {
       setSignupPassword('')
       setConfirmPassword('')
       setError('')
-
     } catch (err) {
-
       setError(
         err.message ||
         'Unable to create account.'
       )
-
     } finally {
-
       setLoading(false)
-
     }
   }
 
@@ -633,7 +584,6 @@ function App() {
   // =====================================================
 
   const handleForgotPassword = async (event) => {
-
     event.preventDefault()
 
     setLoading(true)
@@ -641,9 +591,8 @@ function App() {
     setSuccess('')
 
     try {
-
       const response = await fetch(
-        '/api/forgot-password/',
+        apiUrl('/api/forgot-password/'),
         {
           method: 'POST',
           headers: {
@@ -670,16 +619,12 @@ function App() {
         data.message ||
         'If an account exists for this email address, a password reset link has been sent.'
       )
-
     } catch (err) {
-
       setError(
         err.message ||
         'Unable to send password reset link.'
       )
-
     } finally {
-
       setLoading(false)
     }
   }
@@ -690,7 +635,6 @@ function App() {
   // =====================================================
 
   const handleResetPassword = async (event) => {
-
     event.preventDefault()
 
     setLoading(true)
@@ -701,7 +645,6 @@ function App() {
       resetPassword !==
       resetConfirmPassword
     ) {
-
       setError(
         'Passwords do not match.'
       )
@@ -712,9 +655,8 @@ function App() {
     }
 
     try {
-
       const response = await fetch(
-        '/api/reset-password/',
+        apiUrl('/api/reset-password/'),
         {
           method: 'POST',
           headers: {
@@ -735,12 +677,10 @@ function App() {
         await response.json()
 
       if (!response.ok) {
-
         if (
           data.errors &&
           data.errors.length > 0
         ) {
-
           throw new Error(
             data.errors.join(' ')
           )
@@ -782,16 +722,12 @@ function App() {
         data.message ||
         'Password reset successfully. You can now sign in using your new password.'
       )
-
     } catch (err) {
-
       setError(
         err.message ||
         'Unable to reset password.'
       )
-
     } finally {
-
       setLoading(false)
     }
   }
@@ -802,7 +738,6 @@ function App() {
   // =====================================================
 
   const handleOpenForgotPassword = () => {
-
     setForgotEmail(email)
 
     setAuthMode('forgot')
@@ -817,9 +752,7 @@ function App() {
   // =====================================================
 
   const handleBackToLogin = () => {
-
     if (authMode === 'reset') {
-
       window.history.replaceState(
         {},
         document.title,
@@ -842,7 +775,6 @@ function App() {
   // =====================================================
 
   const switchAuthMode = (mode) => {
-
     setAuthMode(mode)
 
     setError('')
@@ -861,7 +793,6 @@ function App() {
   // =====================================================
 
   const handleOpenClass = (classData) => {
-
     setSelectedClassOrigin('classes')
 
     setSelectedClass(classData)
@@ -874,7 +805,6 @@ function App() {
 
   const handleOpenArchivedClass =
     (classData) => {
-
       setSelectedClassOrigin('history')
 
       setSelectedClass(classData)
@@ -886,20 +816,16 @@ function App() {
   // =====================================================
 
   const handleBackFromClass = () => {
-
     setSelectedClass(null)
 
     if (
       selectedClassOrigin ===
       'history'
     ) {
-
       setCurrentPage('history')
 
       fetchHistory()
-
     } else {
-
       setCurrentPage('classes')
 
       fetchClasses()
@@ -912,7 +838,6 @@ function App() {
   // =====================================================
 
   const handleAddClass = () => {
-
     setModalMode('add')
 
     setEditingClass(null)
@@ -927,7 +852,6 @@ function App() {
 
   const handleEditClass =
     (classData) => {
-
       setModalMode('edit')
 
       setEditingClass(
@@ -943,7 +867,6 @@ function App() {
   // =====================================================
 
   const handleCloseModal = () => {
-
     setModalOpen(false)
 
     setEditingClass(null)
@@ -956,12 +879,10 @@ function App() {
 
   const handleSaveClass =
     async (formData) => {
-
       const token =
         getToken()
 
       if (!token) {
-
         alert(
           'Your login session has expired.'
         )
@@ -970,16 +891,16 @@ function App() {
       }
 
       try {
-
         let response
 
         if (
           modalMode === 'edit' &&
           editingClass
         ) {
-
           response = await fetch(
-            `/api/classes/${editingClass.id}/`,
+            apiUrl(
+              `/api/classes/${editingClass.id}/`
+            ),
             {
               method: 'PUT',
 
@@ -1003,11 +924,9 @@ function App() {
               }),
             }
           )
-
         } else {
-
           response = await fetch(
-            '/api/classes/',
+            apiUrl('/api/classes/'),
             {
               method: 'POST',
 
@@ -1033,27 +952,20 @@ function App() {
           )
         }
 
-
         const data =
           await response.json()
 
-
         if (!response.ok) {
-
           throw new Error(
             data.message ||
             'Unable to save class.'
           )
         }
 
-
         handleCloseModal()
 
         await fetchClasses()
-
-
       } catch (err) {
-
         alert(
           err.message ||
           'Unable to save class.'
@@ -1068,7 +980,6 @@ function App() {
 
   const handleArchiveClass =
     async (classData) => {
-
       const confirmed =
         window.confirm(
           `Archive ${classData.name}? This class will be moved to History.`
@@ -1082,10 +993,11 @@ function App() {
         getToken()
 
       try {
-
         const response =
           await fetch(
-            `/api/classes/${classData.id}/archive/`,
+            apiUrl(
+              `/api/classes/${classData.id}/archive/`
+            ),
             {
               method: 'POST',
 
@@ -1096,25 +1008,18 @@ function App() {
             }
           )
 
-
         const data =
           await response.json()
 
-
         if (!response.ok) {
-
           throw new Error(
             data.message ||
             'Unable to archive class.'
           )
         }
 
-
         await fetchClasses()
-
-
       } catch (err) {
-
         alert(
           err.message ||
           'Unable to archive class.'
@@ -1129,7 +1034,6 @@ function App() {
 
   const handleRestoreClass =
     async (classData) => {
-
       const confirmed =
         window.confirm(
           `Restore ${classData.name} to Active Classes?`
@@ -1143,10 +1047,11 @@ function App() {
         getToken()
 
       try {
-
         const response =
           await fetch(
-            `/api/classes/${classData.id}/restore/`,
+            apiUrl(
+              `/api/classes/${classData.id}/restore/`
+            ),
             {
               method: 'POST',
 
@@ -1157,27 +1062,20 @@ function App() {
             }
           )
 
-
         const data =
           await response.json()
 
-
         if (!response.ok) {
-
           throw new Error(
             data.message ||
             'Unable to restore class.'
           )
         }
 
-
         await fetchHistory()
 
         await fetchClasses()
-
-
       } catch (err) {
-
         alert(
           err.message ||
           'Unable to restore class.'
@@ -1192,7 +1090,6 @@ function App() {
 
   const handleDeleteClass =
     async (classData) => {
-
       const confirmed =
         window.confirm(
           `Permanently delete ${classData.name}? This action cannot be undone.`
@@ -1206,10 +1103,11 @@ function App() {
         getToken()
 
       try {
-
         const response =
           await fetch(
-            `/api/classes/${classData.id}/`,
+            apiUrl(
+              `/api/classes/${classData.id}/`
+            ),
             {
               method: 'DELETE',
 
@@ -1220,25 +1118,18 @@ function App() {
             }
           )
 
-
         const data =
           await response.json()
 
-
         if (!response.ok) {
-
           throw new Error(
             data.message ||
             'Unable to delete class.'
           )
         }
 
-
         await fetchClasses()
-
-
       } catch (err) {
-
         alert(
           err.message ||
           'Unable to delete class.'
@@ -1253,7 +1144,6 @@ function App() {
 
   const handleOpenHistory =
     async () => {
-
       setCurrentPage('history')
 
       await fetchHistory()
@@ -1265,7 +1155,6 @@ function App() {
   // =====================================================
 
   const handleBackToClasses = () => {
-
     setCurrentPage('classes')
 
     fetchClasses()
@@ -1277,7 +1166,6 @@ function App() {
   // =====================================================
 
   const handleOpenEditProfile = () => {
-
     setProfileMenuOpen(false)
 
     setProfileModalOpen(true)
@@ -1286,7 +1174,6 @@ function App() {
 
   const handleProfileUpdated =
     (updatedProfile) => {
-
       const updatedLecturer = {
         ...lecturer,
         ...updatedProfile,
@@ -1306,7 +1193,6 @@ function App() {
 
 
   const handleCloseProfileModal = () => {
-
     setProfileModalOpen(false)
   }
 
@@ -1316,16 +1202,13 @@ function App() {
   // =====================================================
 
   const handleLogout = async () => {
-
     const token =
       getToken()
 
     try {
-
       if (token) {
-
         await fetch(
-          '/api/logout/',
+          apiUrl('/api/logout/'),
           {
             method: 'POST',
 
@@ -1336,13 +1219,9 @@ function App() {
           }
         )
       }
-
     } catch {
-
       // Browser session will still be cleared
-
     }
-
 
     localStorage.removeItem(
       'authToken'
@@ -1351,7 +1230,6 @@ function App() {
     localStorage.removeItem(
       'lecturer'
     )
-
 
     setLecturer(null)
 
@@ -1382,6 +1260,7 @@ function App() {
     setProfileModalOpen(false)
 
     setError('')
+
     setSuccess('')
   }
 

@@ -26,6 +26,9 @@ build/
 *.pkl
 *.joblib
 
+# Keep the trained model required by the deployed system
+!best_risk_model.pkl
+
 # Generated files
 analytics_results.xlsx
 student_risk_predictions.xlsx

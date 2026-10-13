@@ -136,6 +136,48 @@ function naturalChapterSort(
 }
 
 
+function roundScoreForDisplay(value) {
+
+  const number =
+    Number(value)
+
+
+  if (
+    !Number.isFinite(number)
+  ) {
+    return null
+  }
+
+
+  return Math.round(
+    (number + Number.EPSILON) *
+    10
+  ) / 10
+}
+
+
+function formatMiniChapterLabel(value) {
+
+  const text =
+    String(value || '')
+      .trim()
+
+
+  const numberMatch =
+    text.match(/\d+/)
+
+
+  if (
+    numberMatch
+  ) {
+    return `Ch ${numberMatch[0]}`
+  }
+
+
+  return text || 'Chapter'
+}
+
+
 function formatNumber(value) {
 
   const number =
@@ -384,84 +426,109 @@ function ChapterPerformanceRisk({
 
             let highestChapters = []
 
+            let equalChapterPerformance =
+              false
+
 
             if (
               chapterEntries.length > 0
             ) {
 
-              const chapterScores =
-                chapterEntries.map(
-                  (item) =>
-                    item.score
-                )
-
-
-              const weakestScore =
-                Math.min(
-                  ...chapterScores
-                )
-
-
-              const highestScore =
-                Math.max(
-                  ...chapterScores
-                )
-
-
               /*
-                Use a very small tolerance so values that
-                are mathematically equal but differ only
-                because of floating-point precision are
-                treated as ties.
+                Tie handling follows the same one-decimal
+                precision displayed to lecturers in the UI.
               */
 
-              const tieTolerance =
-                0.001
-
-
-              weakestChapters =
+              const displayedScores =
                 chapterEntries
-                  .filter(
-                    (item) =>
-                      Math.abs(
-                        item.score -
-                        weakestScore
-                      ) <
-                      tieTolerance
-                  )
                   .map(
                     (item) =>
-                      item.chapter
+                      roundScoreForDisplay(
+                        item.score
+                      )
                   )
-
-
-              highestChapters =
-                chapterEntries
                   .filter(
-                    (item) =>
-                      Math.abs(
-                        item.score -
-                        highestScore
-                      ) <
-                      tieTolerance
+                    (score) =>
+                      score !== null
                   )
-                  .map(
-                    (item) =>
-                      item.chapter
+
+
+              if (
+                displayedScores.length > 0
+              ) {
+
+                const weakestScore =
+                  Math.min(
+                    ...displayedScores
                   )
+
+
+                const highestScore =
+                  Math.max(
+                    ...displayedScores
+                  )
+
+
+                equalChapterPerformance =
+                  weakestScore ===
+                  highestScore
+
+
+                if (
+                  !equalChapterPerformance
+                ) {
+
+                  weakestChapters =
+                    chapterEntries
+                      .filter(
+                        (item) =>
+                          roundScoreForDisplay(
+                            item.score
+                          ) ===
+                          weakestScore
+                      )
+                      .map(
+                        (item) =>
+                          item.chapter
+                      )
+
+
+                  highestChapters =
+                    chapterEntries
+                      .filter(
+                        (item) =>
+                          roundScoreForDisplay(
+                            item.score
+                          ) ===
+                          highestScore
+                      )
+                      .map(
+                        (item) =>
+                          item.chapter
+                      )
+                }
+              }
             }
 
 
             const weakestChapter =
-              weakestChapters.length > 0
-                ? weakestChapters.join(', ')
-                : 'No Data'
+              equalChapterPerformance
+                ? 'All Equal'
+                : (
+                    weakestChapters.length > 0
+                      ? weakestChapters.join(', ')
+                      : 'No Data'
+                  )
 
 
             const highestChapter =
-              highestChapters.length > 0
-                ? highestChapters.join(', ')
-                : 'No Data'
+              equalChapterPerformance
+                ? 'All Equal'
+                : (
+                    highestChapters.length > 0
+                      ? highestChapters.join(', ')
+                      : 'No Data'
+                  )
 
 
             // -----------------------------------------
@@ -518,6 +585,8 @@ function ChapterPerformanceRisk({
               weakestChapters,
 
               highestChapters,
+
+              equalChapterPerformance,
 
               chapters:
                 chapterEntries,
@@ -1715,8 +1784,8 @@ function ChapterPerformanceRisk({
       'Coursework Mark',
       'Coursework Total',
       'Coursework Performance (%)',
-      'Weakest Chapter',
-      'Highest Chapter',
+      'Weakest Chapters',
+      'Highest Chapters',
       'Risk Level',
       'Prediction Confidence (%)',
     ]
@@ -1828,77 +1897,82 @@ function ChapterPerformanceRisk({
           '0.00'
 
 
-        // Weakest chapter.
+        // Weakest / highest chapter text cells.
+        // Keep an all-equal result neutral.
 
-        row.getCell(
-          6
-        ).fill = {
-          type:
-            'pattern',
+        if (
+          !student
+            .equalChapterPerformance
+        ) {
 
-          pattern:
-            'solid',
+          row.getCell(
+            6
+          ).fill = {
+            type:
+              'pattern',
 
-          fgColor: {
-            argb:
-              colours.redFill,
-          },
-        }
+            pattern:
+              'solid',
 
-
-        row.getCell(
-          6
-        ).font = {
-          name:
-            'Calibri',
-
-          size:
-            10,
-
-          bold:
-            true,
-
-          color: {
-            argb:
-              colours.red,
-          },
-        }
+            fgColor: {
+              argb:
+                colours.redFill,
+            },
+          }
 
 
-        // Highest chapter.
+          row.getCell(
+            6
+          ).font = {
+            name:
+              'Calibri',
 
-        row.getCell(
-          7
-        ).fill = {
-          type:
-            'pattern',
+            size:
+              10,
 
-          pattern:
-            'solid',
+            bold:
+              true,
 
-          fgColor: {
-            argb:
-              colours.greenFill,
-          },
-        }
+            color: {
+              argb:
+                colours.red,
+            },
+          }
 
 
-        row.getCell(
-          7
-        ).font = {
-          name:
-            'Calibri',
+          row.getCell(
+            7
+          ).fill = {
+            type:
+              'pattern',
 
-          size:
-            10,
+            pattern:
+              'solid',
 
-          bold:
-            true,
+            fgColor: {
+              argb:
+                colours.greenFill,
+            },
+          }
 
-          color: {
-            argb:
-              colours.green,
-          },
+
+          row.getCell(
+            7
+          ).font = {
+            name:
+              'Calibri',
+
+            size:
+              10,
+
+            bold:
+              true,
+
+            color: {
+              argb:
+                colours.green,
+            },
+          }
         }
 
 
@@ -1981,8 +2055,8 @@ function ChapterPerformanceRisk({
           `${chapter} (%)`
       ),
 
-      'Weakest Chapter',
-      'Highest Chapter',
+      'Weakest Chapters',
+      'Highest Chapters',
       'Risk Level',
     ]
 
@@ -2197,82 +2271,88 @@ function ChapterPerformanceRisk({
           allChapters.length + 5
 
 
-        // Weakest chapter text cell.
+        // Weakest / highest chapter text cells.
+        // Keep an all-equal result neutral.
 
-        row.getCell(
-          weakestColumn
-        ).fill = {
-          type:
-            'pattern',
+        if (
+          !student
+            .equalChapterPerformance
+        ) {
 
-          pattern:
-            'solid',
+          row.getCell(
+            weakestColumn
+          ).fill = {
+            type:
+              'pattern',
 
-          fgColor: {
-            argb:
-              colours.redFill,
-          },
+            pattern:
+              'solid',
+
+            fgColor: {
+              argb:
+                colours.redFill,
+            },
+          }
+
+
+          row.getCell(
+            weakestColumn
+          ).font = {
+            name:
+              'Calibri',
+
+            size:
+              10,
+
+            bold:
+              true,
+
+            color: {
+              argb:
+                colours.red,
+            },
+          }
+
+
+          row.getCell(
+            highestColumn
+          ).fill = {
+            type:
+              'pattern',
+
+            pattern:
+              'solid',
+
+            fgColor: {
+              argb:
+                colours.greenFill,
+            },
+          }
+
+
+          row.getCell(
+            highestColumn
+          ).font = {
+            name:
+              'Calibri',
+
+            size:
+              10,
+
+            bold:
+              true,
+
+            color: {
+              argb:
+                colours.green,
+            },
+          }
         }
 
 
-        row.getCell(
-          weakestColumn
-        ).font = {
-          name:
-            'Calibri',
-
-          size:
-            10,
-
-          bold:
-            true,
-
-          color: {
-            argb:
-              colours.red,
-          },
-        }
-
-
-        // Highest chapter text cell.
-
-        row.getCell(
-          highestColumn
-        ).fill = {
-          type:
-            'pattern',
-
-          pattern:
-            'solid',
-
-          fgColor: {
-            argb:
-              colours.greenFill,
-          },
-        }
-
-
-        row.getCell(
-          highestColumn
-        ).font = {
-          name:
-            'Calibri',
-
-          size:
-            10,
-
-          bold:
-            true,
-
-          color: {
-            argb:
-              colours.green,
-          },
-        }
-
-
-        // Also highlight actual weakest/highest
-        // chapter score cells.
+        // Chapter score cells use the same performance
+        // thresholds as the website:
+        // >= 70 green, >= 50 orange, < 50 red.
 
         allChapters.forEach(
           (
@@ -2286,85 +2366,82 @@ function ChapterPerformanceRisk({
               )
 
 
+            const score =
+              chapterScoreMap.get(
+                chapter
+              )
+
+
+            const numericScore =
+              Number(score)
+
+
             if (
-              student
-                .weakestChapters
-                .includes(
-                  chapter
-                )
+              !Number.isFinite(
+                numericScore
+              )
             ) {
-
-              scoreCell.fill = {
-                type:
-                  'pattern',
-
-                pattern:
-                  'solid',
-
-                fgColor: {
-                  argb:
-                    colours.redFill,
-                },
-              }
-
-
-              scoreCell.font = {
-                name:
-                  'Calibri',
-
-                size:
-                  10,
-
-                bold:
-                  true,
-
-                color: {
-                  argb:
-                    colours.red,
-                },
-              }
-
+              return
             }
 
 
+            let fill =
+              colours.redFill
+
+            let font =
+              colours.red
+
+
             if (
-              student
-                .highestChapters
-                .includes(
-                  chapter
-                )
+              numericScore >= 70
             ) {
 
-              scoreCell.fill = {
-                type:
-                  'pattern',
+              fill =
+                colours.greenFill
 
-                pattern:
-                  'solid',
+              font =
+                colours.green
 
-                fgColor: {
-                  argb:
-                    colours.greenFill,
-                },
-              }
+            } else if (
+              numericScore >= 50
+            ) {
+
+              fill =
+                colours.orangeFill
+
+              font =
+                colours.orange
+            }
 
 
-              scoreCell.font = {
-                name:
-                  'Calibri',
+            scoreCell.fill = {
+              type:
+                'pattern',
 
-                size:
-                  10,
+              pattern:
+                'solid',
 
-                bold:
-                  true,
+              fgColor: {
+                argb:
+                  fill,
+              },
+            }
 
-                color: {
-                  argb:
-                    colours.green,
-                },
-              }
 
+            scoreCell.font = {
+              name:
+                'Calibri',
+
+              size:
+                10,
+
+              bold:
+                true,
+
+              color: {
+                argb:
+                  font,
+              },
             }
 
           }
@@ -3919,6 +3996,23 @@ function ChapterPerformanceRisk({
                 </div>
 
 
+                {selectedStudent
+                  .equalChapterPerformance &&
+                  selectedStudent
+                    .chapters
+                    .length > 0 && (
+
+                  <div className="risk-criteria-note">
+
+                    Equal performance across all chapters.
+                    No single highest or weakest chapter
+                    is identified for this student.
+
+                  </div>
+
+                )}
+
+
                 {/* CHAPTER PERFORMANCE */}
 
                 {selectedStudent
@@ -4075,8 +4169,7 @@ function ChapterPerformanceRisk({
                               {
                                 chapter,
                                 score,
-                              },
-                              index
+                              }
                             ) => (
 
                               <div
@@ -4118,11 +4211,11 @@ function ChapterPerformanceRisk({
 
                                 <span>
 
-                                  Ch
-
-                                  {' '}
-
-                                  {index + 1}
+                                  {
+                                    formatMiniChapterLabel(
+                                      chapter
+                                    )
+                                  }
 
                                 </span>
 

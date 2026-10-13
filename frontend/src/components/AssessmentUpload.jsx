@@ -4,6 +4,8 @@ import {
 } from 'react'
 
 
+import { apiUrl } from '../api'
+
 function formatUploadDate(value) {
   if (!value) {
     return ''
@@ -363,7 +365,7 @@ function AssessmentUpload({
 
         const response =
           await fetch(
-            '/api/upload/',
+                apiUrl('/api/upload/'),
             {
               method: 'POST',
 

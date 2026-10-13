@@ -4,12 +4,24 @@ import {
   useState,
 } from 'react'
 
+import {
+  ArrowLeft,
+  Bot,
+  ChartNoAxesColumnIncreasing,
+  LayoutDashboard,
+  Upload,
+  UserRoundSearch,
+} from 'lucide-react'
+
 import heroLogo from '../assets/hero.png'
+import { apiUrl } from '../api'
 
 import AssessmentUpload from './AssessmentUpload'
 import ChapterPerformanceRisk from './ChapterPerformanceRisk'
 import DashboardOverview from './DashboardOverview'
 import EditProfileModal from './EditProfileModal'
+import StudentInsights from './StudentInsights'
+import AIAssistant from './AIAssistant'
 
 
 function ClassDashboard({
@@ -264,9 +276,9 @@ function ClassDashboard({
 
       try {
 
-        const response =
-          await fetch(
-            `/api/classes/${classData.id}/latest-analysis/`,
+       const response =
+  await fetch(
+    apiUrl(`/api/classes/${classData.id}/latest-analysis/`),
             {
               method: 'GET',
 
@@ -417,6 +429,24 @@ function ClassDashboard({
     ) {
 
       return 'Chapter Performance & Risk'
+
+    }
+
+
+    if (
+      activePage === 'student-insights'
+    ) {
+
+      return 'Student Insights'
+
+    }
+
+
+    if (
+      activePage === 'ai-assistant'
+    ) {
+
+      return 'AI Assistant'
 
     }
 
@@ -586,9 +616,11 @@ function ClassDashboard({
             }
           >
 
-            <span className="dashboard-menu-icon">
-              ▦
-            </span>
+            <LayoutDashboard
+              size={18}
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
 
             <span>
               Dashboard Overview
@@ -628,9 +660,11 @@ function ClassDashboard({
             }
           >
 
-            <span className="dashboard-menu-icon">
-              ↑
-            </span>
+            <Upload
+              size={18}
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
 
             <span>
               Upload Assessment File
@@ -662,12 +696,86 @@ function ClassDashboard({
             }
           >
 
-            <span className="dashboard-menu-icon">
-              ▥
-            </span>
+            <ChartNoAxesColumnIncreasing
+              size={18}
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
 
             <span>
               Chapter Performance & Risk
+            </span>
+
+          </button>
+
+
+
+          {/* =================================================
+              STUDENT INSIGHTS
+          ================================================= */}
+
+          <button
+            type="button"
+
+            className={
+              `dashboard-menu-item ${
+                activePage === 'student-insights'
+                  ? 'active'
+                  : ''
+              }`
+            }
+
+            onClick={() =>
+              setActivePage(
+                'student-insights'
+              )
+            }
+          >
+
+            <UserRoundSearch
+              size={18}
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
+
+            <span>
+              Student Insights
+            </span>
+
+          </button>
+
+
+
+          {/* =================================================
+              AI ASSISTANT
+          ================================================= */}
+
+          <button
+            type="button"
+
+            className={
+              `dashboard-menu-item ${
+                activePage === 'ai-assistant'
+                  ? 'active'
+                  : ''
+              }`
+            }
+
+            onClick={() =>
+              setActivePage(
+                'ai-assistant'
+              )
+            }
+          >
+
+            <Bot
+              size={18}
+              strokeWidth={1.9}
+              aria-hidden="true"
+            />
+
+            <span>
+              AI Assistant
             </span>
 
           </button>
@@ -694,7 +802,15 @@ function ClassDashboard({
             }
           >
 
-            ← My Classes
+            <ArrowLeft
+              size={17}
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+
+            <span>
+              My Classes
+            </span>
 
           </button>
 
@@ -849,7 +965,7 @@ function ClassDashboard({
 
                   <strong>
 
-                    {lecturer?.name ||
+                    {dashboardLecturer?.name ||
                       'Lecturer'}
 
                   </strong>
@@ -1067,6 +1183,75 @@ function ClassDashboard({
           />
 
         )}
+
+
+
+        {/* =================================================
+            STUDENT INSIGHTS
+        ================================================= */}
+
+        {activePage ===
+          'student-insights' && (
+
+          <StudentInsights
+
+            analysisData={
+              analysisData
+            }
+
+            hasAnalysis={
+              hasAnalysis
+            }
+
+            loading={
+              analyticsLoading
+            }
+
+            classData={
+              classData
+            }
+
+            lecturer={
+              dashboardLecturer
+            }
+
+          />
+
+        )}
+
+
+
+        {/* =================================================
+            AI ASSISTANT
+        ================================================= */}
+
+        {activePage ===
+          'ai-assistant' && (
+
+          <AIAssistant
+
+            analysisData={
+              analysisData
+            }
+
+            hasAnalysis={
+              hasAnalysis
+            }
+
+            loading={
+              analyticsLoading
+            }
+
+            classData={
+              classData
+            }
+
+          />
+
+        )}
+
+
+
 
 
       </main>

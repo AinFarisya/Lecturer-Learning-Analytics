@@ -1,0 +1,946 @@
+import json
+import os
+import re
+
+from openai import OpenAI
+
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import LecturerClass
+
+
+class ClassAIAssistantView(APIView):
+
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    # =====================================================
+    # SMALL ANALYTICS HELPERS
+    # =====================================================
+
+    def _safe_number(self, value):
+
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+
+    def _average_values(self, values):
+
+        numbers = [
+            self._safe_number(value)
+            for value in values
+        ]
+
+        numbers = [
+            value
+            for value in numbers
+            if value is not None
+        ]
+
+        if not numbers:
+            return None
+
+        return sum(numbers) / len(numbers)
+
+
+    def _lowest_result(self, results):
+
+        if not isinstance(results, dict):
+            return None
+
+        valid_results = []
+
+        for name, value in results.items():
+
+            number = self._safe_number(value)
+
+            if number is not None:
+                valid_results.append(
+                    (str(name), number)
+                )
+
+        if not valid_results:
+            return None
+
+        minimum_value = min(
+            value
+            for _, value in valid_results
+        )
+
+        names = [
+            name
+            for name, value in valid_results
+            if abs(value - minimum_value) < 0.0001
+        ]
+
+        return {
+            "names": names,
+            "score": minimum_value,
+        }
+
+
+    def _weak_chapter_ratio(self, chapter_results):
+
+        if not isinstance(chapter_results, dict):
+            return None
+
+        scores = [
+            self._safe_number(value)
+            for value in chapter_results.values()
+        ]
+
+        scores = [
+            score
+            for score in scores
+            if score is not None
+        ]
+
+        if not scores:
+            return None
+
+        weak_count = sum(
+            1
+            for score in scores
+            if score < 50
+        )
+
+        return (
+            weak_count / len(scores)
+        ) * 100
+
+
+    def _student_summary(self, student):
+
+        assessment_results = (
+            student.assessment_results
+            if isinstance(student.assessment_results, dict)
+            else {}
+        )
+
+        chapter_results = (
+            student.chapter_results
+            if isinstance(student.chapter_results, dict)
+            else {}
+        )
+
+        return {
+            "student_id": student.student_id,
+            "student_name": student.student_name,
+            "predicted_risk": student.predicted_risk,
+            "prediction_confidence": student.prediction_confidence,
+            "coursework_performance": student.coursework_performance,
+            "assessment_average": self._average_values(
+                assessment_results.values()
+            ),
+            "chapter_average": self._average_values(
+                chapter_results.values()
+            ),
+            "lowest_assessment": self._lowest_result(
+                assessment_results
+            ),
+            "lowest_chapter": self._lowest_result(
+                chapter_results
+            ),
+            "weak_chapter_ratio": self._weak_chapter_ratio(
+                chapter_results
+            ),
+        }
+
+
+    def _build_priority_summary(self, analysis):
+
+        students = list(
+            analysis.students.all()
+        )
+
+        risk_counts = {
+            "Low": 0,
+            "Medium": 0,
+            "High": 0,
+        }
+
+        for student in students:
+
+            risk = str(
+                student.predicted_risk or ""
+            ).strip()
+
+            if risk in risk_counts:
+                risk_counts[risk] += 1
+
+
+        high_risk_students = [
+            student
+            for student in students
+            if student.predicted_risk == "High"
+        ]
+
+        medium_risk_students = [
+            student
+            for student in students
+            if student.predicted_risk == "Medium"
+        ]
+
+
+        high_risk_students.sort(
+            key=lambda student: (
+                self._safe_number(
+                    student.coursework_performance
+                )
+                if self._safe_number(
+                    student.coursework_performance
+                ) is not None
+                else float("inf"),
+                student.student_id,
+            )
+        )
+
+
+        medium_risk_students.sort(
+            key=lambda student: (
+                self._safe_number(
+                    student.coursework_performance
+                )
+                if self._safe_number(
+                    student.coursework_performance
+                ) is not None
+                else float("inf"),
+                student.student_id,
+            )
+        )
+
+
+        return {
+            "risk_counts": risk_counts,
+
+            # Exact IDs are calculated by Django.
+            # Gemini must not recount the raw student JSON.
+            "all_high_risk_student_ids": [
+                student.student_id
+                for student in high_risk_students
+            ],
+
+            # Show only the most urgent students by default.
+            "priority_high_risk_students": [
+                self._student_summary(student)
+                for student in high_risk_students[:5]
+            ],
+
+            # Secondary attention only.
+            "priority_medium_risk_students": [
+                self._student_summary(student)
+                for student in medium_risk_students[:3]
+            ],
+        }
+
+
+    # =====================================================
+    # CLASS CONTEXT
+    # =====================================================
+
+    def _extract_student_ids(self, text):
+
+        if not text:
+            return []
+
+        raw_text = str(text)
+
+        matches = []
+
+        # Exact IDs such as S039, s39, S001.
+        for match in re.findall(
+            r"\bS\s*0*(\d+)\b",
+            raw_text,
+            flags=re.IGNORECASE,
+        ):
+
+            number = int(match)
+
+            matches.append(
+                f"S{number:03d}"
+            )
+
+
+        # Natural phrases such as:
+        # "student 39", "Student 032",
+        # "student number 39", "student no 39",
+        # "student with number 43", "student with id 12".
+        natural_patterns = [
+            r"\bstudent\s*0*(\d+)\b",
+            r"\bstudent\s+(?:number|no\.?|id)\s*[:#-]?\s*0*(\d+)\b",
+            r"\bstudent\s+with\s+(?:number|no\.?|id)\s*[:#-]?\s*0*(\d+)\b",
+        ]
+
+        for pattern in natural_patterns:
+
+            for match in re.findall(
+                pattern,
+                raw_text,
+                flags=re.IGNORECASE,
+            ):
+
+                number = int(match)
+
+                matches.append(
+                    f"S{number:03d}"
+                )
+
+
+        # Preserve order and remove duplicates.
+        return list(
+            dict.fromkeys(
+                matches
+            )
+        )
+
+
+    def _resolve_students_from_question(
+        self,
+        student_queryset,
+        question,
+    ):
+
+        if not question:
+            return []
+
+        raw_question = str(question)
+        question_lower = raw_question.lower()
+
+        students = list(student_queryset)
+
+        resolved = []
+        seen_ids = set()
+
+
+        def add_student(student):
+
+            key = str(student.student_id).strip().lower()
+
+            if key in seen_ids:
+                return
+
+            seen_ids.add(key)
+            resolved.append(student)
+
+
+        # -------------------------------------------------
+        # 1. Natural S-style references:
+        # S039, student 39, student with number 39, etc.
+        # -------------------------------------------------
+
+        extracted_ids = self._extract_student_ids(
+            raw_question
+        )
+
+        student_by_id = {
+            str(student.student_id).strip().upper():
+                student
+            for student in students
+        }
+
+        for student_id in extracted_ids:
+
+            student = student_by_id.get(
+                student_id.upper()
+            )
+
+            if student:
+                add_student(student)
+
+
+        # -------------------------------------------------
+        # 2. Exact real student IDs from the uploaded data.
+        # Supports IDs such as 22012010.
+        # -------------------------------------------------
+
+        for student in students:
+
+            student_id = str(
+                student.student_id or ""
+            ).strip()
+
+            if not student_id:
+                continue
+
+            pattern = (
+                r"(?<![A-Za-z0-9])"
+                + re.escape(student_id)
+                + r"(?![A-Za-z0-9])"
+            )
+
+            if re.search(
+                pattern,
+                raw_question,
+                flags=re.IGNORECASE,
+            ):
+                add_student(student)
+
+
+        # -------------------------------------------------
+        # 3. Student names.
+        # Exact phrase matching avoids guessing/fuzzy matches.
+        # Longer names are checked first.
+        # -------------------------------------------------
+
+        named_students = sorted(
+            [
+                student
+                for student in students
+                if str(
+                    student.student_name or ""
+                ).strip()
+            ],
+            key=lambda student:
+                len(
+                    str(
+                        student.student_name
+                    ).strip()
+                ),
+            reverse=True,
+        )
+
+        for student in named_students:
+
+            student_name = str(
+                student.student_name
+            ).strip()
+
+            # Collapse repeated spaces for reliable matching.
+            normalized_name = re.sub(
+                r"\s+",
+                " ",
+                student_name.lower(),
+            )
+
+            normalized_question = re.sub(
+                r"\s+",
+                " ",
+                question_lower,
+            )
+
+            if not normalized_name:
+                continue
+
+            pattern = (
+                r"(?<![A-Za-z0-9])"
+                + re.escape(normalized_name)
+                + r"(?![A-Za-z0-9])"
+            )
+
+            if re.search(
+                pattern,
+                normalized_question,
+                flags=re.IGNORECASE,
+            ):
+                add_student(student)
+
+
+        return resolved
+
+
+    def _detect_question_type(self, question):
+
+        text = str(question or "").lower()
+
+        if any(
+            phrase in text
+            for phrase in [
+                "which students need attention",
+                "who needs attention",
+                "students need attention",
+                "high risk students",
+                "at-risk students",
+                "at risk students",
+            ]
+        ):
+            return "attention"
+
+        if any(
+            word in text
+            for word in [
+                "compare",
+                "comparison",
+                "versus",
+                " vs ",
+                "difference between",
+            ]
+        ):
+            return "comparison"
+
+        if any(
+            phrase in text
+            for phrase in [
+                "summarise this class",
+                "summarize this class",
+                "class summary",
+                "overview of this class",
+            ]
+        ):
+            return "class_summary"
+
+        if any(
+            phrase in text
+            for phrase in [
+                "what should i focus on next",
+                "what should i focus",
+                "focus on next",
+                "teaching priority",
+                "teaching priorities",
+            ]
+        ):
+            return "focus"
+
+        if self._extract_student_ids(question):
+            return "student"
+
+        return "general"
+
+
+    def _build_class_context(
+        self,
+        lecturer_class,
+        analysis,
+        question="",
+        history_text="",
+    ):
+
+        lecturer = self.request.user
+
+        lecturer_name = (
+            lecturer.get_full_name()
+            or getattr(lecturer, "email", "")
+            or getattr(lecturer, "username", "")
+            or "Lecturer"
+        )
+
+        student_queryset = (
+            analysis.students.all()
+            .order_by("student_id")
+        )
+
+        question_type = self._detect_question_type(
+            question
+        )
+
+        resolved_students = (
+            self._resolve_students_from_question(
+                student_queryset,
+                question,
+            )
+        )
+
+        # A name-only or real-ID-only lookup should be treated
+        # as a student question rather than a generic question.
+        if (
+            question_type == "general"
+            and resolved_students
+        ):
+            question_type = "student"
+
+        assessments = [
+            {
+                "assessment_name": assessment.assessment_name,
+                "class_average": assessment.class_average,
+            }
+            for assessment in (
+                analysis.assessment_summaries
+                .all()
+                .order_by("assessment_name")
+            )
+        ]
+
+        chapters = [
+            {
+                "chapter_name": chapter.chapter_name,
+                "class_average": chapter.class_average,
+            }
+            for chapter in (
+                analysis.chapter_summaries
+                .all()
+                .order_by("chapter_name")
+            )
+        ]
+
+        latest_analysis = {
+            "analysis_id": analysis.id,
+            "total_students": analysis.total_students,
+            "total_coursework_weightage": analysis.total_coursework_weightage,
+            "average_coursework_performance": analysis.average_coursework_performance,
+            "weakest_class_chapter": analysis.weakest_class_chapter,
+            "strongest_class_chapter": analysis.strongest_class_chapter,
+            "risk_model": {
+                "name": analysis.model_name,
+                "version": analysis.model_version,
+            },
+            "assessment_summaries": assessments,
+            "chapter_summaries": chapters,
+            "priority_summary": self._build_priority_summary(
+                analysis
+            ),
+        }
+
+        # For student/comparison questions, attach full details
+        # for students deterministically resolved from the question
+        # by S-style ID, real student ID, or exact student name.
+        if resolved_students:
+
+            latest_analysis["selected_students"] = []
+
+            for student in resolved_students:
+
+                latest_analysis["selected_students"].append({
+                    "student_id": student.student_id,
+                    "student_name": student.student_name,
+                    "coursework_performance": student.coursework_performance,
+                    "predicted_risk": student.predicted_risk,
+                    "prediction_confidence": student.prediction_confidence,
+                    "generic_features": student.generic_features,
+                    "assessment_results": student.assessment_results,
+                    "chapter_results": student.chapter_results,
+                })
+
+        # For general lookup questions only, provide a very small
+        # all-student index. Do NOT send it for attention, summary,
+        # focus, comparison, or explicit student questions.
+        if question_type == "general":
+
+            latest_analysis["student_index"] = [
+                {
+                    "student_id": student.student_id,
+                    "student_name": student.student_name,
+                    "predicted_risk": student.predicted_risk,
+                    "coursework_performance": student.coursework_performance,
+                }
+                for student in student_queryset
+            ]
+
+        return {
+            "question_type": question_type,
+
+            "lecturer": {
+                "name": lecturer_name,
+            },
+
+            "class": {
+                "id": lecturer_class.id,
+                "code": lecturer_class.code,
+                "name": lecturer_class.name,
+                "semester": lecturer_class.semester,
+                "is_archived": lecturer_class.is_archived,
+            },
+
+            "latest_analysis": latest_analysis,
+        }
+
+
+    # =====================================================
+    # CHAT HISTORY
+    # =====================================================
+
+    def _build_history_text(self, history):
+
+        if not isinstance(history, list):
+            return ""
+
+        lines = []
+
+        for message in history[-4:]:
+
+            if not isinstance(message, dict):
+                continue
+
+            role = str(message.get("role", "")).strip().lower()
+            text = str(message.get("text", "")).strip()
+
+            if role not in {"user", "assistant"} or not text:
+                continue
+
+            label = "Lecturer" if role == "user" else "AI Assistant"
+            lines.append(f"{label}: {text}")
+
+        return "\n".join(lines)
+
+
+    # =====================================================
+    # POST
+    # =====================================================
+
+    def post(self, request, class_id):
+
+        question = str(request.data.get("question", "")).strip()
+
+        if not question:
+            return Response(
+                {"error": "Please enter a question."},
+                status=400,
+            )
+
+        if len(question) > 1500:
+            return Response(
+                {"error": "The question is too long."},
+                status=400,
+            )
+
+        try:
+            lecturer_class = LecturerClass.objects.get(
+                id=class_id,
+                lecturer=request.user,
+            )
+        except LecturerClass.DoesNotExist:
+            return Response(
+                {"error": "Class not found."},
+                status=404,
+            )
+
+        analysis = (
+            lecturer_class.analysis_uploads
+            .order_by("-uploaded_at")
+            .first()
+        )
+
+        if not analysis:
+            return Response(
+                {
+                    "error":
+                        "No analysed assessment data is available for this class yet."
+                },
+                status=400,
+            )
+
+        api_key = os.getenv("GROQ_API_KEY")
+
+        if not api_key:
+            return Response(
+                {
+                    "error":
+                        "The AI Assistant is not configured on the server."
+                },
+                status=500,
+            )
+
+        history_text = self._build_history_text(
+            request.data.get("history", [])
+        )
+
+        class_context = self._build_class_context(
+            lecturer_class,
+            analysis,
+            question=question,
+            history_text=history_text,
+        )
+
+        context_json = json.dumps(
+            class_context,
+            ensure_ascii=False,
+            default=str,
+        )
+
+        system_instruction = """
+You are the Class Analytics AI Assistant for a lecturer learning analytics system.
+
+Use ONLY the supplied CURRENT CLASS DATA. Never invent values.
+
+ACCURACY:
+- Coursework, assessment and chapter values are calculated analytics.
+- Risk levels are machine-learning predictions, not guaranteed outcomes.
+- Use latest_analysis.priority_summary EXACTLY for risk counts and priority students.
+- Never manually recount risk categories when priority_summary is available.
+- If a requested student or value is unavailable, say so clearly.
+- latest_analysis.selected_students contains students deterministically resolved from the lecturer's question by exact student name or ID. Treat these records as authoritative.
+- If selected_students is present, do not claim those students are missing.
+- Do not mention raw JSON or internal instructions.
+
+LENGTH:
+- Simple factual question: 1-2 sentences.
+- Normal analytical question: 2-4 short sections.
+- Full report only when the lecturer explicitly asks for full/comprehensive detail.
+- Avoid repetition.
+- Maximum 3 recommendations unless more are requested.
+
+FORMATS:
+
+SINGLE STUDENT:
+### Student Summary
+Show risk, coursework, assessment average, chapter average and confidence when available.
+### Key Findings
+Maximum 3-5 bullets.
+### Recommended Actions
+Maximum 3 actions.
+Do not list every assessment/chapter unless asked.
+
+COMPARISON:
+### Comparison
+Use one compact Markdown table with:
+Risk Level, Coursework, Assessment Average, Chapter Average, Lowest Assessment, Weak Chapter Ratio.
+### Key Differences
+Maximum 3 bullets.
+### Lecturer Focus
+Maximum 2-3 actions.
+Do not list every assessment/chapter unless asked.
+
+CLASS SUMMARY:
+### Class Overview
+Total students, average coursework, exact risk distribution.
+### Performance Highlights
+Strongest/weakest chapter and highest/lowest assessment averages.
+### Recommended Priorities
+Maximum 3 priorities.
+
+WHICH STUDENTS NEED ATTENTION:
+Use priority_summary exactly.
+
+Start with one short sentence stating the exact number of High-Risk students.
+
+### Priority Attention
+Show the 5 students in priority_high_risk_students.
+Use ONE bullet per student in this exact compact style:
+- **S030** — High Risk | Coursework **34.60%** | Main concern: **100.00% weak chapter ratio**
+
+For each student:
+- include only Student ID, High Risk, coursework, and ONE most useful concern;
+- do NOT include prediction confidence;
+- do NOT include assessment average and chapter average unless one of them is the clearest concern;
+- do NOT put multiple metrics in one long sentence.
+
+If more High-Risk students exist, add ONE short line:
+**Additional High-Risk students:** Sxxx, Sxxx, ...
+
+### Secondary Attention
+Show at most 2 Medium-Risk students only if useful.
+Use one short bullet each.
+
+### Lecturer Focus
+Give exactly 3 concise actions.
+
+Keep this entire answer short and scannable. Do not turn it into a report.
+
+WHAT SHOULD I FOCUS ON NEXT:
+Give up to 3 ranked priorities using weakest chapters, weaker assessments and priority_summary.
+
+STYLE:
+Use clear Markdown headings, bullets and tables when useful.
+Use bold selectively.
+Format percentages to two decimals when presenting calculated values.
+Keep factual analytics separate from practical recommendations.
+
+RECOMMENDATION SAFETY:
+- Do not recommend that a stronger student become a peer mentor, tutor, buddy, or support person unless the lecturer explicitly asks for peer-support ideas.
+- Do not assume student willingness, availability, behaviour, motivation, or personal circumstances.
+- Prefer lecturer-controlled actions such as targeted revision, feedback, consultation, monitoring, practice activities, and reviewing specific weak assessments or chapters.
+- Do not say that one chapter or assessment "caused", "contributed to", or "resulted in" a student's ML risk level unless that causal relationship is explicitly stored in the supplied data.
+- Prefer wording such as "is also an area of weakness", "is associated with weaker performance", or "should be reviewed alongside the student's risk prediction".
+- Avoid phrases such as "larger margin of safety" for risk predictions. Instead say that the student currently shows stronger calculated performance indicators.
+""".strip()
+
+        prompt_parts = [
+            "CURRENT CLASS DATA:",
+            context_json,
+        ]
+
+        if history_text:
+            prompt_parts.extend([
+                "",
+                "RECENT CONVERSATION:",
+                history_text,
+            ])
+
+        prompt_parts.extend([
+            "",
+            "LECTURER QUESTION:",
+            question,
+        ])
+
+        prompt = "\n".join(prompt_parts)
+
+        try:
+
+            client = OpenAI(
+                api_key=api_key,
+                base_url="https://api.groq.com/openai/v1",
+            )
+
+            response = client.chat.completions.create(
+                model="openai/gpt-oss-20b",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_instruction,
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                ],
+                temperature=0.2,
+                reasoning_effort="low",
+                max_completion_tokens=900,
+            )
+
+            answer = str(
+                response.choices[0].message.content or ""
+            ).strip()
+
+            if not answer:
+                return Response(
+                    {
+                        "error":
+                            "The AI Assistant did not return a response."
+                    },
+                    status=502,
+                )
+
+            return Response({
+                "answer": answer,
+                "class_id": lecturer_class.id,
+                "analysis_id": analysis.id,
+                "model": "openai/gpt-oss-20b",
+            })
+
+        except Exception as error:
+
+            print(
+                "Groq AI Assistant error:",
+                repr(error),
+            )
+
+            error_text = str(error).lower()
+
+            if (
+                "rate_limit" in error_text
+                or "rate limit" in error_text
+                or "429" in error_text
+                or "resource_exhausted" in error_text
+            ):
+                return Response(
+                    {
+                        "error":
+                            "The AI service has reached a temporary usage limit. Please wait a moment and try again."
+                    },
+                    status=429,
+                )
+
+            if (
+                "request too large" in error_text
+                or "tokens per minute" in error_text
+                or "tpm" in error_text
+            ):
+                return Response(
+                    {
+                        "error":
+                            "This request contains too much analytics context for the current AI limit. Please try a more specific question."
+                    },
+                    status=413,
+                )
+
+            return Response(
+                {
+                    "error":
+                        "The AI Assistant is temporarily unavailable. Please try again."
+                },
+                status=502,
+            )

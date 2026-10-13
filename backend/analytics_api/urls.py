@@ -28,6 +28,10 @@ from .class_views import (
     restore_class,
 )
 
+from .ai_views import (
+    ClassAIAssistantView,
+)
+
 
 urlpatterns = [
 
@@ -122,12 +126,17 @@ urlpatterns = [
     # =====================================================
     # CLASS ANALYTICS
     # =====================================================
-    path(
-        "classes/<int:class_id>/latest-analysis/",
-        class_latest_analysis,
-        name="class-latest-analysis"
-    ),
+   path(
+    "classes/<int:class_id>/latest-analysis/",
+    class_latest_analysis,
+    name="class-latest-analysis"
+),
 
+path(
+    "classes/<int:class_id>/ai-assistant/",
+    ClassAIAssistantView.as_view(),
+    name="class-ai-assistant"
+),
 
     # =====================================================
     # ANALYSIS
