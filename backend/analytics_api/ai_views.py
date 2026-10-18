@@ -866,6 +866,7 @@ For each priority:
 - do NOT imply that an intervention will definitely prevent a student from moving to another risk level;
 - keep recommendations lecturer-controlled and practical.
 - for Medium-Risk students, recommend lecturer-led monitoring, targeted feedback, consultation, or revision activities; do NOT recommend peer-study groups or peer mentoring unless the lecturer explicitly asks for peer-support ideas;
+- avoid all wording that predicts future risk-category movement, including "regression", "progression", "escalation", "deterioration", "higher risk", or "lower risk"; instead describe the purpose as supporting current performance weaknesses and monitoring current indicators.
 - do NOT say that Medium-Risk students may "move into", "escalate to", or "become" High-Risk; describe only their current calculated risk level and current performance indicators.
 
 Rank priorities by urgency:
