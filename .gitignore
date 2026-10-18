@@ -52,3 +52,4 @@ Thumbs.db
 FYP_ML_Synthetic_Dataset_500_v1.xlsx
 best_model_confusion_matrix.csv
 model_comparison.csv
+recovery-codes*.txt
