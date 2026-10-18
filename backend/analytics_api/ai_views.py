@@ -865,6 +865,8 @@ For each priority:
 - do NOT invent aggregate statistics such as "many students scored below X%" unless that statistic is explicitly supplied;
 - do NOT imply that an intervention will definitely prevent a student from moving to another risk level;
 - keep recommendations lecturer-controlled and practical.
+- for Medium-Risk students, recommend lecturer-led monitoring, targeted feedback, consultation, or revision activities; do NOT recommend peer-study groups or peer mentoring unless the lecturer explicitly asks for peer-support ideas;
+- do NOT say that Medium-Risk students may "move into", "escalate to", or "become" High-Risk; describe only their current calculated risk level and current performance indicators.
 
 Rank priorities by urgency:
 1. High-Risk students and the strongest evidence of weakness.
