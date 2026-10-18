@@ -852,7 +852,24 @@ Give exactly 3 concise lecturer-controlled actions based on the supplied class a
 Keep the answer clear and scannable, but always include every High-Risk and Medium-Risk student when the lecturer asks which students need attention.
 
 WHAT SHOULD I FOCUS ON NEXT:
-Give up to 3 ranked priorities using weakest chapters, weaker assessments and priority_summary.
+
+Give exactly 3 ranked lecturer priorities using only the supplied
+weakest chapters, weaker assessments, risk counts, student summaries,
+and priority_summary.
+
+For each priority:
+- state the recommended lecturer action;
+- give a short factual rationale based only on supplied analytics;
+- use exact chapter names, assessment names, counts, or percentages when available;
+- do NOT claim improvement, decline, progression, trends, or changes over time unless historical data is explicitly supplied;
+- do NOT invent aggregate statistics such as "many students scored below X%" unless that statistic is explicitly supplied;
+- do NOT imply that an intervention will definitely prevent a student from moving to another risk level;
+- keep recommendations lecturer-controlled and practical.
+
+Rank priorities by urgency:
+1. High-Risk students and the strongest evidence of weakness.
+2. Weakest chapters or assessments affecting the class.
+3. Medium-Risk monitoring and targeted support.
 
 STYLE:
 Use clear Markdown headings, bullets and tables when useful.
