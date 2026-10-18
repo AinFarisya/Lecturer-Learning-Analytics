@@ -225,17 +225,28 @@ class ClassAIAssistantView(APIView):
                 for student in high_risk_students
             ],
 
-            # Show only the most urgent students by default.
-            "priority_high_risk_students": [
-                self._student_summary(student)
-                for student in high_risk_students[:5]
-            ],
+           # Exact number of students requiring attention.
+"students_needing_attention_count": (
+    risk_counts["High"] + risk_counts["Medium"]
+),
 
-            # Secondary attention only.
-            "priority_medium_risk_students": [
-                self._student_summary(student)
-                for student in medium_risk_students[:3]
-            ],
+# Include all High-Risk students.
+"priority_high_risk_students": [
+    self._student_summary(student)
+    for student in high_risk_students
+],
+
+# Include all Medium-Risk students.
+"priority_medium_risk_students": [
+    self._student_summary(student)
+    for student in medium_risk_students
+],
+
+# Exact Medium-Risk student IDs.
+"all_medium_risk_student_ids": [
+    student.student_id
+    for student in medium_risk_students
+],
         }
 
 
@@ -792,32 +803,53 @@ Strongest/weakest chapter and highest/lowest assessment averages.
 Maximum 3 priorities.
 
 WHICH STUDENTS NEED ATTENTION:
+
 Use priority_summary exactly.
 
-Start with one short sentence stating the exact number of High-Risk students.
+Start with one short sentence stating:
+- the exact total number of students needing attention;
+- the exact number of High-Risk students;
+- the exact number of Medium-Risk students.
+
+Use students_needing_attention_count for the total.
 
 ### Priority Attention
-Show the 5 students in priority_high_risk_students.
-Use ONE bullet per student in this exact compact style:
+
+Show ALL students in priority_high_risk_students.
+
+Use ONE bullet per student in this compact style:
+
 - **S030** — High Risk | Coursework **34.60%** | Main concern: **100.00% weak chapter ratio**
 
-For each student:
-- include only Student ID, High Risk, coursework, and ONE most useful concern;
-- do NOT include prediction confidence;
-- do NOT include assessment average and chapter average unless one of them is the clearest concern;
-- do NOT put multiple metrics in one long sentence.
-
-If more High-Risk students exist, add ONE short line:
-**Additional High-Risk students:** Sxxx, Sxxx, ...
+For each High-Risk student:
+- include Student ID;
+- include High Risk;
+- include coursework performance;
+- include ONE most useful concern;
+- do NOT include prediction confidence unless specifically asked;
+- do NOT invent any value.
 
 ### Secondary Attention
-Show at most 2 Medium-Risk students only if useful.
-Use one short bullet each.
+
+Show ALL students in priority_medium_risk_students.
+
+Use ONE bullet per student in this compact style:
+
+- **S023** — Medium Risk | Coursework **49.17%** | Main concern: **60.00% weak chapter ratio**
+
+For each Medium-Risk student:
+- include Student ID;
+- include Medium Risk;
+- include coursework performance;
+- include ONE most useful concern;
+- do NOT omit Medium-Risk students when the lecturer asks which students need attention;
+- do NOT invent any value.
 
 ### Lecturer Focus
-Give exactly 3 concise actions.
 
-Keep this entire answer short and scannable. Do not turn it into a report.
+Give exactly 3 concise lecturer-controlled actions based on the supplied class analytics.
+
+Keep the answer clear and scannable, but always include every High-Risk and Medium-Risk student when the lecturer asks which students need attention.
 
 WHAT SHOULD I FOCUS ON NEXT:
 Give up to 3 ranked priorities using weakest chapters, weaker assessments and priority_summary.
