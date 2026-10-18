@@ -1,3 +1,4 @@
+import logging
 import re
 
 from PIL import Image
@@ -17,6 +18,9 @@ from rest_framework.response import Response
 from .models import LecturerProfile
 
 
+logger = logging.getLogger(__name__)
+
+
 # =========================================================
 # PROFILE RESPONSE
 # =========================================================
@@ -26,7 +30,6 @@ def build_profile_response(request, user, profile):
     profile_photo_url = None
 
     if profile.profile_photo:
-
         profile_photo_url = request.build_absolute_uri(
             profile.profile_photo.url
         )
@@ -45,8 +48,8 @@ def build_profile_response(request, user, profile):
 
 # =========================================================
 # LECTURER PROFILE
-# GET  -> Retrieve profile
-# PUT  -> Update profile
+# GET -> Retrieve profile
+# PUT -> Update profile
 # =========================================================
 
 @api_view(["GET", "PUT"])
@@ -76,12 +79,11 @@ def lecturer_profile(request):
         return Response(
             {
                 "status": "success",
-                "profile":
-                    build_profile_response(
-                        request,
-                        user,
-                        profile,
-                    ),
+                "profile": build_profile_response(
+                    request,
+                    user,
+                    profile,
+                ),
             },
             status=status.HTTP_200_OK,
         )
@@ -126,11 +128,9 @@ def lecturer_profile(request):
         return Response(
             {
                 "status": "error",
-                "message":
-                    "Full name is required.",
+                "message": "Full name is required.",
             },
-            status=
-                status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
 
@@ -140,9 +140,7 @@ def lecturer_profile(request):
 
     if phone_number:
 
-        phone_pattern = (
-            r"^[0-9+\-\s()]{7,30}$"
-        )
+        phone_pattern = r"^[0-9+\-\s()]{7,30}$"
 
         if not re.match(
             phone_pattern,
@@ -152,11 +150,9 @@ def lecturer_profile(request):
             return Response(
                 {
                     "status": "error",
-                    "message":
-                        "Please enter a valid phone number.",
+                    "message": "Please enter a valid phone number.",
                 },
-                status=
-                    status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
 
@@ -165,6 +161,7 @@ def lecturer_profile(request):
     # =====================================================
 
     user.first_name = name
+
     user.save(
         update_fields=[
             "first_name"
@@ -198,10 +195,8 @@ def lecturer_profile(request):
     # UPLOAD / REPLACE PROFILE PHOTO
     # =====================================================
 
-    uploaded_photo = (
-        request.FILES.get(
-            "profile_photo"
-        )
+    uploaded_photo = request.FILES.get(
+        "profile_photo"
     )
 
     if uploaded_photo:
@@ -211,36 +206,32 @@ def lecturer_profile(request):
             "image/png",
         ]
 
-        if (
-            uploaded_photo.content_type
-            not in allowed_types
-        ):
+        if uploaded_photo.content_type not in allowed_types:
 
             return Response(
                 {
                     "status": "error",
-                    "message":
-                        "Profile photo must be a JPG, JPEG, or PNG image.",
+                    "message": (
+                        "Profile photo must be a JPG, "
+                        "JPEG, or PNG image."
+                    ),
                 },
-                status=
-                    status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
 
-        max_size = (
-            2 * 1024 * 1024
-        )
+        max_size = 2 * 1024 * 1024
 
         if uploaded_photo.size > max_size:
 
             return Response(
                 {
                     "status": "error",
-                    "message":
-                        "Profile photo must not exceed 2 MB.",
+                    "message": (
+                        "Profile photo must not exceed 2 MB."
+                    ),
                 },
-                status=
-                    status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
 
@@ -259,11 +250,12 @@ def lecturer_profile(request):
             return Response(
                 {
                     "status": "error",
-                    "message":
-                        "The uploaded file is not a valid image.",
+                    "message": (
+                        "The uploaded file is not "
+                        "a valid image."
+                    ),
                 },
-                status=
-                    status.HTTP_400_BAD_REQUEST,
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
 
@@ -274,25 +266,47 @@ def lecturer_profile(request):
             )
 
 
-        profile.profile_photo = (
-            uploaded_photo
+        profile.profile_photo = uploaded_photo
+
+
+    # =====================================================
+    # SAVE PROFILE
+    # =====================================================
+
+    try:
+
+        profile.save()
+
+    except Exception as exc:
+
+        logger.exception(
+            "Failed to save lecturer profile"
+        )
+
+        return Response(
+            {
+                "status": "error",
+                "message": (
+                    f"Profile photo could not be saved: {exc}"
+                ),
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 
-    profile.save()
-
+    # =====================================================
+    # SUCCESS RESPONSE
+    # =====================================================
 
     return Response(
         {
             "status": "success",
-            "message":
-                "Profile updated successfully.",
-            "profile":
-                build_profile_response(
-                    request,
-                    user,
-                    profile,
-                ),
+            "message": "Profile updated successfully.",
+            "profile": build_profile_response(
+                request,
+                user,
+                profile,
+            ),
         },
         status=status.HTTP_200_OK,
     )
