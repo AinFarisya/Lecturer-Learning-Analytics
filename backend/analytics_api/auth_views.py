@@ -1,8 +1,7 @@
-import json
 import logging
 import os
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+
+import resend
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -53,98 +52,39 @@ def send_resend_email(
 
     from_email = os.getenv(
         "RESEND_FROM_EMAIL",
-        (
-            "Learning Analytics "
-            "<onboarding@resend.dev>"
-        ),
+        "Learning Analytics <onboarding@resend.dev>",
     ).strip()
 
-    payload = {
+    resend.api_key = api_key
+
+    params = {
         "from": from_email,
         "to": [recipient_email],
         "subject": subject,
-        "text": text_message,
         "html": html_message,
+        "text": text_message,
     }
 
-    encoded_payload = json.dumps(
-        payload
-    ).encode("utf-8")
-
-    request = Request(
-        "https://api.resend.com/emails",
-        data=encoded_payload,
-        headers={
-    "Authorization":
-        f"Bearer {api_key}",
-    "Content-Type":
-        "application/json",
-    "Accept":
-        "application/json",
-    "User-Agent":
-        "Lecturer-Learning-Analytics/1.0",
-},
-        method="POST",
-    )
-
     try:
-        with urlopen(
-            request,
-            timeout=20,
-        ) as response:
-
-            response_body = (
-                response.read()
-                .decode(
-                    "utf-8",
-                    errors="replace",
-                )
-            )
-
-            if response.status not in {
-                200,
-                201,
-            }:
-                raise RuntimeError(
-                    (
-                        "Resend returned an "
-                        f"unexpected status "
-                        f"{response.status}: "
-                        f"{response_body}"
-                    )
-                )
-
-            return response_body
-
-    except HTTPError as error:
-
-        error_body = (
-            error.read()
-            .decode(
-                "utf-8",
-                errors="replace",
-            )
+        response = resend.Emails.send(
+            params
         )
 
-        logger.error(
-            "Resend API HTTP error %s: %s",
-            error.code,
-            error_body,
+        logger.info(
+            "Password reset email sent through Resend to user email."
         )
 
-        raise RuntimeError(
-            "Unable to send email through Resend."
-        ) from error
+        return response
 
-    except URLError as error:
+    except Exception as error:
 
-        logger.error(
-            "Unable to connect to Resend: %s",
+        logger.exception(
+            "Resend email sending failed: %s",
             error,
         )
 
         raise RuntimeError(
-            "Unable to connect to the email service."
+            "Unable to send email through Resend."
         ) from error
 
 
