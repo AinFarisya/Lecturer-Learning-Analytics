@@ -1,7 +1,7 @@
 import logging
 import os
 
-import resend
+import requests
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -34,59 +34,92 @@ logger = logging.getLogger(__name__)
 # RESEND EMAIL HELPER
 # =====================================================
 
-def send_resend_email(
+def send_brevo_email(
     recipient_email,
     subject,
-    text_message,
     html_message,
 ):
     api_key = os.getenv(
-        "RESEND_API_KEY",
+        "BREVO_API_KEY",
         "",
     ).strip()
 
     if not api_key:
         raise RuntimeError(
-            "RESEND_API_KEY is not configured."
+            "BREVO_API_KEY is not configured."
         )
 
     from_email = os.getenv(
-        "RESEND_FROM_EMAIL",
-        "Learning Analytics <onboarding@resend.dev>",
+        "BREVO_FROM_EMAIL",
+        "",
     ).strip()
 
-    resend.api_key = api_key
+    from_name = os.getenv(
+        "BREVO_FROM_NAME",
+        "Learning Analytics",
+    ).strip()
 
-    params = {
-        "from": from_email,
-        "to": [recipient_email],
+    if not from_email:
+        raise RuntimeError(
+            "BREVO_FROM_EMAIL is not configured."
+        )
+
+    payload = {
+        "sender": {
+            "name": from_name,
+            "email": from_email,
+        },
+        "to": [
+            {
+                "email": recipient_email,
+            }
+        ],
         "subject": subject,
-        "html": html_message,
-        "text": text_message,
+        "htmlContent": html_message,
+    }
+
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json",
     }
 
     try:
-        response = resend.Emails.send(
-            params
+        response = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers=headers,
+            json=payload,
+            timeout=20,
         )
+
+        if response.status_code != 201:
+
+            logger.error(
+                "Brevo API error %s: %s",
+                response.status_code,
+                response.text,
+            )
+
+            raise RuntimeError(
+                "Brevo rejected the email request."
+            )
 
         logger.info(
-            "Password reset email sent through Resend to user email."
+            "Password reset email sent through Brevo."
         )
 
-        return response
+        return response.json()
 
-    except Exception as error:
+    except requests.RequestException as error:
 
         logger.exception(
-            "Resend email sending failed: %s",
+            "Brevo email request failed: %s",
             error,
         )
 
         raise RuntimeError(
-            "Unable to send email through Resend."
+            "Unable to connect to Brevo."
         ) from error
-
 
 # =====================================================
 # SIGN UP
@@ -605,16 +638,14 @@ def lecturer_forgot_password(request):
 
     try:
 
-        send_resend_email(
-            recipient_email=
-                user.email,
-            subject=
-                subject,
-            text_message=
-                text_message,
-            html_message=
-                html_message,
-        )
+       send_brevo_email(
+    recipient_email=
+        user.email,
+    subject=
+        subject,
+    html_message=
+        html_message,
+)
 
     except Exception:
 
