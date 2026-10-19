@@ -75,11 +75,15 @@ def send_resend_email(
         "https://api.resend.com/emails",
         data=encoded_payload,
         headers={
-            "Authorization":
-                f"Bearer {api_key}",
-            "Content-Type":
-                "application/json",
-        },
+    "Authorization":
+        f"Bearer {api_key}",
+    "Content-Type":
+        "application/json",
+    "Accept":
+        "application/json",
+    "User-Agent":
+        "Lecturer-Learning-Analytics/1.0",
+},
         method="POST",
     )
 
